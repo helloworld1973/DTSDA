@@ -4,8 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from scipy.spatial.distance import cdist
-from DGTSDA.network import Adver_network, common_network, act_network
-from DGTSDA.loss.common_loss import Entropylogits
+from DTSDA.network import Adver_network, common_network, act_network
+from DTSDA.loss.common_loss import Entropylogits
 from TICC.TICC_utils import updateClusters
 import torch.utils.data as Data
 
@@ -117,14 +117,15 @@ class DGTSDA_temporal_diff(torch.nn.Module):
         class_list = ST_torch_loader.dataset.tensors[1].numpy()
         unique_elements = np.unique(class_list)
         idx_list = ST_torch_loader.dataset.tensors[4].numpy()
-        pred_label = np.empty((0, ))
+        pred_label = np.empty((0,))
         for a_class in range(len(unique_elements)):
             this_class_idx_list = []
             for index, class_name in enumerate(class_list):
                 if class_name == a_class:
                     this_class_idx_list.append(idx_list[index])
             this_class_LLE_all_points_clusters = dd[this_class_idx_list]
-            this_class_pred_label = updateClusters(this_class_LLE_all_points_clusters, switch_penalty=TICC_switch_penalty)
+            this_class_pred_label = updateClusters(this_class_LLE_all_points_clusters,
+                                                   switch_penalty=TICC_switch_penalty)
             pred_label = np.concatenate((pred_label, this_class_pred_label), axis=0)
         pred_label = pred_label.astype(int)
 
@@ -151,7 +152,7 @@ class DGTSDA_temporal_diff(torch.nn.Module):
                              T_torch_loader.dataset.tensors[0])]),
             T_torch_loader.dataset.tensors[3], T_torch_loader.dataset.tensors[4])
 
-        #print(Counter(pred_label))
+        # print(Counter(pred_label))
         self.dbottleneck.train()
         self.dclassifier.train()
         self.featurizer.train()
@@ -217,7 +218,7 @@ class DGTSDA_temporal_diff(torch.nn.Module):
                              T_torch_loader.dataset.tensors[0])]),
             T_torch_loader.dataset.tensors[3], T_torch_loader.dataset.tensors[4])
 
-        #print(Counter(pred_label))
+        # print(Counter(pred_label))
         self.dbottleneck.train()
         self.dclassifier.train()
         self.featurizer.train()
@@ -243,6 +244,7 @@ class DGTSDA_temporal_diff(torch.nn.Module):
         S_classifier_loss = F.cross_entropy(S_all_preds, S_all_c)
 
         loss = S_classifier_loss + disc_d_loss + ST_classifier_ts_loss
+
         opt.zero_grad()
         loss.backward()
         opt.step()
@@ -271,6 +273,9 @@ class DGTSDA_temporal_diff(torch.nn.Module):
 
     def predict(self, x):
         return self.classifier(self.bottleneck(self.featurizer(x))), self.bottleneck(self.featurizer(x))
+
+    def predict_shap(self, x):
+        return self.bottleneck(self.featurizer(x))
 
     def predict1(self, x):
         return self.ddiscriminator(self.dbottleneck(self.featurizer(x)))

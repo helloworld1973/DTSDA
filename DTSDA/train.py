@@ -1,9 +1,9 @@
 import time
-from DGTSDA.alg.DGTSDA_temporal_diff import DGTSDA_temporal_diff
-from DGTSDA.alg.opt import *
-from DGTSDA.alg import modelopera
-from DGTSDA.utils.util import set_random_seed, print_row, log_and_print
-from utils import draw_TSNE
+from DTSDA.alg.DTSDA import DGTSDA_temporal_diff,  DGTSDA_temporal_diff
+from DTSDA.alg.opt import *
+from DTSDA.alg import modelopera
+from DTSDA.network.common_network import GradCAM, visualize_gradcam
+from DTSDA.utils.util import set_random_seed, print_row, log_and_print
 
 
 def DGTSDA_temporal_diff_train(S_torch_loader, T_torch_loader, ST_torch_loader, global_epoch, local_epoch, num_classes,
@@ -31,6 +31,8 @@ def DGTSDA_temporal_diff_train(S_torch_loader, T_torch_loader, ST_torch_loader, 
                         nettype='Diversify-cls')
     opta = get_optimizer(algorithm, lr_decay1, lr_decay2, lr, optim_Adam_weight_decay, optim_Adam_beta,
                          nettype='Diversify-all')
+
+    grad_cam = GradCAM(algorithm.featurizer, target_layer_name="conv2")
 
     for round in range(global_epoch):
         log_and_print(content='\n========ROUND {' + str(round) + '}========', filename=file_name)
@@ -100,6 +102,11 @@ def DGTSDA_temporal_diff_train(S_torch_loader, T_torch_loader, ST_torch_loader, 
             print_row([results[key] for key in print_key], colwidth=23, file_name=file_name)
 
         #draw_TSNE(S_mu, S_y, T_mu, T_y, round)
+        for data in T_torch_loader:
+            x = data[0].float()
+            y = data[1].long()
+            cam = grad_cam.generate_heatmap()
+            visualize_gradcam(cam, x.cpu().detach().numpy()[250], round)
 
     print(f'Target acc: {target_acc:.4f}')
     print(best_cm)

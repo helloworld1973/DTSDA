@@ -1,6 +1,12 @@
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 from torch import softmax
+import shap
+from shap.explainers import DeepExplainer
+from torch.autograd import Variable
+
+from DTSDA.network.common_network import GradCAM
 
 
 def accuracy_target_user(network, loader, s_loader, weights, usedpredict='p'):
@@ -19,6 +25,32 @@ def accuracy_target_user(network, loader, s_loader, weights, usedpredict='p'):
             y = data[1].long()
             if usedpredict == 'p':
                 p, mu = network.predict(x)
+                '''
+                # Example input tensor (replace with your actual tensor)
+                #x = torch.randn(1557, 6, 1, 300)  # Example shape: (samples, channels, height, width)
+                x_numpy = x.cpu().detach().numpy()  # Convert to NumPy
+
+                # Reshape input to 2D
+                x_flat = x_numpy.reshape(x_numpy.shape[0], -1)  # Shape: (1557, 6*1*300)
+
+                # Summarize background data (use shap.sample or shap.kmeans)
+                background_data = shap.kmeans(x_flat, 10)  # Cluster into 10 groups
+
+                # Define a callable prediction function for SHAP
+                def predict_fn(data):
+                    data_tensor = torch.tensor(data).reshape(-1, 6, 1, 300)  # Reshape back for the model
+                    return network.predict_shap(data_tensor).cpu().detach().numpy()
+
+                # Initialize KernelExplainer
+                explainer = shap.KernelExplainer(predict_fn, background_data)
+
+                # Compute SHAP values
+                shap_values = explainer.shap_values(x_flat)
+
+                # Visualize SHAP summary plot
+                shap.summary_plot(shap_values, x_flat)
+                '''
+
             else:
                 p = network.predict1(x)
             if weights is None:
@@ -116,3 +148,8 @@ def accuracy(network, loader, weights, usedpredict='p'):
     network.train()
 
     return correct / total, mu, y
+
+
+
+
+

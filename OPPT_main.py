@@ -2,7 +2,8 @@ import torch
 import numpy as np
 from gtda.time_series import SlidingWindow
 import random
-from DGTSDA_temporal_diff.train import DGTSDA_temporal_diff_train
+
+from DTSDA.train import DGTSDA_temporal_diff_train
 from utils import get_DGTSDA_temporal_diff_train_data
 
 # /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

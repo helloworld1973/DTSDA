@@ -5,8 +5,8 @@ import torch
 from gtda.time_series import SlidingWindow
 from matplotlib import pyplot as plt
 import torch.utils.data as Data
-from DGTSDA.train import DGTSDA_temporal_diff_train
-from DGTSDA.utils.util import log_and_print, matrix_to_string
+from DTSDA.train import DGTSDA_temporal_diff_train
+from DTSDA.utils.util import log_and_print, matrix_to_string
 from utils import get_DGTSDA_temporal_diff_train_data
 
 # /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
