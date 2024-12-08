@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import torch
 
+
 class feat_bottleneck(nn.Module):
     def __init__(self, feature_dim, bottleneck_dim=256):
         super(feat_bottleneck, self).__init__()
@@ -56,76 +57,82 @@ class GradCAM:
         self.gradients = grad_output[0]  # Capture gradients w.r.t. the target layer
 
     def generate_heatmap(self):
-        # Compute Grad-CAM heatmap
-        gradients = self.gradients.cpu().detach().numpy()
-        activations = self.activations.cpu().detach().numpy()
-        weights = np.mean(gradients, axis=(2, 3))  # Global average pooling
+        """
+        Generate Grad-CAM heatmap for the entire batch.
 
-        cam = np.zeros(activations.shape[2:], dtype=np.float32)
-        for i, w in enumerate(weights[0]):
-            cam += w * activations[0, i]
+        Returns:
+            numpy.ndarray: Grad-CAM heatmap for the batch, shape (N, H, W).
+        """
+        # Compute Grad-CAM heatmap for the batch
+        gradients = self.gradients.cpu().detach().numpy()  # Shape: (N, C, H, W)
+        activations = self.activations.cpu().detach().numpy()  # Shape: (N, C, H, W)
+        weights = np.mean(gradients, axis=(2, 3))  # Global average pooling over H and W
 
-        # Apply ReLU and normalize the heatmap
-        cam = np.maximum(cam, 0)
-        cam -= np.min(cam)
-        cam /= np.max(cam)
-        return cam
+        batch_size = activations.shape[0]
+        cam_batch = []
 
-def visualize_gradcam(cam, input_signal, round):
+        for b in range(batch_size):
+            cam = np.zeros(activations.shape[2:], dtype=np.float32)  # Shape: (H, W)
+            for i, w in enumerate(weights[b]):
+                cam += w * activations[b, i]
+            # Apply ReLU and normalize the heatmap
+            cam = np.maximum(cam, 0)
+            cam -= np.min(cam)
+            cam /= np.max(cam) + 1e-8  # Avoid division by zero
+            cam_batch.append(cam)
+
+        return np.array(cam_batch)  # Shape: (N, H, W)
+
+
+def visualize_gradcam(cam_batch, input_signal, round_number, input_labels):
     """
-    Visualize the Grad-CAM heatmap overlayed on the time-series input signal.
+    Visualize the averaged Grad-CAM heatmaps overlayed on the averaged input signals per label.
 
     Args:
-        cam (numpy.ndarray): The class activation map, shape (1, 69).
-        input_signal (numpy.ndarray): The original time-series signal, shape (6, 1, 300).
-                                      Assumes a single sample with 6 channels.
+        cam_batch (numpy.ndarray): Batch of CAMs, shape (N, H, W).
+        input_signal (numpy.ndarray): Input signals, shape (N, C, 1, T).
+        round_number (int): Current training round or epoch number.
+        input_labels (numpy.ndarray): Labels for each sample in the batch, shape (N,).
 
     Returns:
-        None. Displays the plot with Grad-CAM overlay.
+        None. Saves and displays the Grad-CAM visualization.
     """
-    # Ensure the input signal has 6 channels
-    if input_signal.shape[0] != 6 or input_signal.shape[1] != 1:
-        raise ValueError("Input signal must have shape (6, 1, 300) for a single sample.")
+    unique_labels = np.unique(input_labels)
+    input_length = input_signal.shape[-1]  # Length of time-series data (T)
+    cam_length = cam_batch.shape[-1]  # Length of CAMs (W)
 
-    # Extract relevant dimensions
-    cam_length = cam.shape[-1]  # Length of the CAM (69)
-    input_length = input_signal.shape[-1]  # Length of the time-series input (300)
+    plt.figure(figsize=(15, 5 * len(unique_labels)))
 
-    # Convert CAM to a PyTorch tensor and reshape
-    cam_tensor = torch.tensor(cam, dtype=torch.float32).unsqueeze(0).unsqueeze(0)  # (1, 1, 69)
+    for idx, label in enumerate(unique_labels):
+        # Select samples corresponding to the current label
+        label_indices = np.where(input_labels == label)[0]
+        avg_cam = np.mean(cam_batch[label_indices], axis=0)  # Average CAM for the label
+        avg_signal = np.mean(input_signal[label_indices], axis=0)  # Average signal for the label
 
-    # Try resizing CAM using PyTorch interpolation
-    try:
-        cam_resized = F.interpolate(cam_tensor, size=(input_length,), mode='linear', align_corners=True)
-        cam_resized = cam_resized.squeeze().numpy()  # Reshape to (300,)
-    except ValueError:
-        # Fallback to NumPy interpolation if PyTorch fails
+        # Upsample CAM to match input signal length (T)
         original_indices = np.linspace(0, cam_length - 1, cam_length)
         new_indices = np.linspace(0, cam_length - 1, input_length)
-        cam_resized = np.interp(new_indices, original_indices, cam[0])
+        avg_cam_resized = np.interp(new_indices, original_indices, avg_cam.squeeze())
 
-    # Normalize CAM for better visualization (0 to 1 range)
-    cam_resized = (cam_resized - cam_resized.min()) / (cam_resized.max() - cam_resized.min())
+        # Normalize CAM for better visualization
+        avg_cam_resized = (avg_cam_resized - avg_cam_resized.min()) / (avg_cam_resized.max() - avg_cam_resized.min())
 
-    # Plot each channel of the input signal with the CAM overlay
-    plt.figure(figsize=(12, 10))
-    for channel in range(input_signal.shape[0]):  # Iterate over 6 channels
-        plt.subplot(input_signal.shape[0], 1, channel + 1)
-        plt.plot(input_signal[channel, 0, :], label=f"Channel {channel + 1}", color='blue')
-        plt.imshow(cam_resized[np.newaxis, :], cmap="jet", aspect="auto", alpha=0.5,
-                   extent=(0, input_length, np.min(input_signal[channel, 0, :]),
-                           np.max(input_signal[channel, 0, :])))
+        # Average signal across channels
+        avg_signal_per_channel = np.mean(avg_signal, axis=0).squeeze()  # Shape: (T,)
+
+        # Plotting
+        plt.subplot(len(unique_labels), 1, idx + 1)
+        plt.plot(avg_signal_per_channel, label=f"Label {label}: Avg Signal", color='blue')
+        plt.imshow(avg_cam_resized[np.newaxis, :], cmap="jet", aspect="auto", alpha=0.5,
+                   extent=(0, input_length, np.min(avg_signal_per_channel), np.max(avg_signal_per_channel)))
         plt.colorbar(label="Grad-CAM Intensity")
-        plt.title(f"Channel {channel + 1}")
+        plt.title(f"Label {label}: Averaged Grad-CAM and Signal")
         plt.xlabel("Time (samples)")
         plt.ylabel("Signal Amplitude")
         plt.legend()
+
     plt.tight_layout()
-
-    # Save the figure
-    save_path = f"gradcam_visualization_round_{round}.png"
-    plt.savefig(save_path, dpi=300)  # Save at high resolution (300 DPI)
+    save_path = f"gradcam_visualization_round_{round_number}.png"
+    plt.savefig(save_path, dpi=300)
     print(f"Grad-CAM visualization saved as {save_path}")
-
-    # Show the figure
     plt.show()

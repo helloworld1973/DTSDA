@@ -18,8 +18,8 @@ activity_list = ['lying', 'sitting', 'standing', 'walking', 'running',
 activities_required = activity_list  # ['lying', 'walking', 'ascending_stairs', 'descending_stairs']
 sensor_channels_required = ['IMU_Hand']  # ['IMU_Hand', 'IMU_Chest', 'IMU_Ankle']
 # activities_required = ['lying']  # ['lying', 'sitting', 'standing', 'walking', 'running'] # activity_list  # activity_list  # 12 common activities ['rope_jumping']
-source_user = '6'  # 1 # 5 # 6
-target_user = '1'
+source_user = '5'  # 1 # 5 # 6
+target_user = '6'
 Sampling_frequency = 100  # HZ
 Num_Seconds = 3
 Window_Overlap_Rate = 0.5
@@ -121,9 +121,9 @@ for Bottleneck_dim in [100]:  # 100, 50
             for Lr_decay2 in [1.0]:
                 for Optim_Adam_weight_decay in [5e-4]:  # 5e-4, 5e-2
                     for Optim_Adam_beta in [0.2]:  # 0.2, 0.5
-                        for lr in [1e-2, 1e-1, 1e-3]:
-                            for Num_temporal_states in [2]:  # 2,3, 4, 5,6,
-                                for TICC_switch_penalty in [0.1]:  # , 0, 0.0001, 0.001, 0.01, 0.1, 1
+                        for lr in [1e-3]: #1e-2, 1e-1,
+                            for Num_temporal_states in [3]:  # 2,3, 4, 5,6,
+                                for TICC_switch_penalty in [0.0001]:  # , 0, 0.0001, 0.001, 0.01, 0.1, 1
                                     print('para_setting:' + str(Num_temporal_states) + '_' + str(
                                         Bottleneck_dim) + '_' + str(Dis_hidden) + '_' + str(
                                         Lr_decay1) + '_' + str(Lr_decay2) + '_' + str(

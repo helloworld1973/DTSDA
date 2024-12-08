@@ -106,7 +106,7 @@ def DGTSDA_temporal_diff_train(S_torch_loader, T_torch_loader, ST_torch_loader, 
             x = data[0].float()
             y = data[1].long()
             cam = grad_cam.generate_heatmap()
-            visualize_gradcam(cam, x.cpu().detach().numpy()[250], round)
+            visualize_gradcam(cam, x.cpu().detach().numpy(), round, y.cpu().detach().numpy())
 
     print(f'Target acc: {target_acc:.4f}')
     print(best_cm)
