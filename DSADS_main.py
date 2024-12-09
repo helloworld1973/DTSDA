@@ -12,6 +12,7 @@ from utils import get_DGTSDA_temporal_diff_train_data
 # /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 # OPPT_dataset
 # PAMAP2_dataset
+# DSADS_dataset
 activity_list = ['sitting', 'standing', 'lying_on_back', 'lying_on_right', 'ascending_stairs', 'descending_stairs',
                  'standing_in_an_elevator_still', 'moving_around_in_an_elevator',
                  'walking_in_a_parking_lot', 'walking_on_a_treadmill_in_flat',
